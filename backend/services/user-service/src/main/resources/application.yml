@@ -1,0 +1,38 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:user_db}
+    username: ${DB_USERNAME:fitnessai}
+    password: ${DB_PASSWORD:fitnessai}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+jwt:
+  # Every downstream service validates this exact string via its own
+  # "jwt.issuer" property — keep them identical.
+  issuer: ${JWT_ISSUER:fitness-ai-user-service}
+  expiry-minutes: ${JWT_EXPIRY_MINUTES:1440}
+  key-dir: ${JWT_KEY_DIR:./data/keys}
+
+# Admin account created on first start (see AdminSeeder). Override in infra/.env.
+seed:
+  admin:
+    username: ${SEED_ADMIN_USERNAME:admin}
+    password: ${SEED_ADMIN_PASSWORD:Admin@12345}
+    email: ${SEED_ADMIN_EMAIL:admin@gymai.local}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

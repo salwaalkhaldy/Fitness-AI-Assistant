@@ -1,0 +1,48 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: knowledge-service
+  neo4j:
+    uri: bolt://${NEO4J_HOST:localhost}:${NEO4J_BOLT_PORT:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:fitnessai123}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  ai:
+    google:
+      genai:
+        # Spring AI refuses to start with an empty key; the placeholder lets the
+        # service boot and report the problem (see AppConfig) instead of crash-looping.
+        api-key: ${GEMINI_API_KEY:not-configured}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-3.5-flash}
+            temperature: 0.0
+        embedding:
+          api-key: ${GEMINI_API_KEY:not-configured}
+          text:
+            options:
+              model: gemini-embedding-001
+    vectorstore:
+      qdrant:
+        host: ${QDRANT_HOST:localhost}
+        port: ${QDRANT_GRPC_PORT:6334}
+        # Separate from the old OpenAI collection: Gemini embeddings have a different dimension.
+        collection-name: fitness_docs_gemini
+        use-tls: false
+        initialize-schema: true
+
+jwt:
+  issuer: ${JWT_ISSUER:fitness-ai-user-service}
+  jwk-set-uri: http://${USER_SERVICE_HOST:localhost}:${USER_SERVICE_PORT:8081}/.well-known/jwks.json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,92 @@
+// Shared auth/session helpers + an authenticated fetch wrapper.
+
+export function getToken() {
+    return localStorage.getItem('token');
+}
+
+export function getUser() {
+    return {
+        token: localStorage.getItem('token'),
+        userId: localStorage.getItem('user_id'),
+        username: localStorage.getItem('username'),
+        email: localStorage.getItem('user_email'),
+        role: localStorage.getItem('role'),
+    };
+}
+
+export function isAuthenticated() {
+    return !!getToken();
+}
+
+export function isAdmin() {
+    return localStorage.getItem('role') === 'admin';
+}
+
+export function storeSession({ access_token, user_id, username, email, role }) {
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user_id', user_id);
+    localStorage.setItem('username', username);
+    localStorage.setItem('user_email', email);
+    localStorage.setItem('role', role);
+}
+
+export function logout() {
+    // Revoke server-side too (best effort). Plain fetch, not apiFetch: a 401
+    // here must not trigger apiFetch's redirect-and-logout loop.
+    const token = getToken();
+    if (token) {
+        fetch('/api/v1/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+            .catch(() => {});
+    }
+    localStorage.removeItem('token');
+    localStorage.removeItem('persona');
+    document.documentElement.removeAttribute('data-persona');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('username');
+    localStorage.removeItem('user_email');
+    localStorage.removeItem('role');
+    localStorage.removeItem('units');
+}
+
+// fetch() wrapper that attaches the bearer token and parses JSON.
+// Throws on network failure; caller still checks result.status === 'success'.
+export async function apiFetch(url, options = {}) {
+    const token = getToken();
+    const headers = { ...(options.headers || {}) };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+        logout();
+        window.location.href = '/login';
+        throw new Error('Session expired. Please sign in again.');
+    }
+
+    return res.json();
+}
+
+// Error text from any backend shape: services/gateway use {message}, FastAPI used {detail}.
+export function errorMessage(result, fallback) {
+    return (result && (result.message || result.detail)) || fallback;
+}
+
+// Fetches a protected file as a blob: URL (for previews). Caller must URL.revokeObjectURL it.
+export async function apiObjectUrl(url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new Error(`Download failed (${res.status})`);
+    // Re-type as PDF so the browser renders it inline instead of downloading.
+    return URL.createObjectURL(new Blob([await res.blob()], { type: 'application/pdf' }));
+}
+
+// Downloads need the bearer token, which a plain <a href> can't send.
+export async function apiDownload(url, filename) {
+    const objectUrl = await apiObjectUrl(url);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}

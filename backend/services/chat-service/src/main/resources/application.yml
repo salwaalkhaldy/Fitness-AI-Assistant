@@ -1,0 +1,55 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: chat-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:chat_db}
+    username: ${DB_USERNAME:fitnessai}
+    password: ${DB_PASSWORD:fitnessai}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  servlet:
+    multipart:
+      # meal photos (MealController caps at 8 MB)
+      max-file-size: 9MB
+      max-request-size: 10MB
+  ai:
+    google:
+      genai:
+        # Placeholder lets the service boot without a key; see AppConfig.
+        api-key: ${GEMINI_API_KEY:not-configured}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-3.5-flash}
+            temperature: 0.4
+
+# Web search via Gemini's Google Search grounding (needs a key with grounding quota, i.e. billing enabled).
+web-search:
+  enabled: ${WEB_SEARCH_ENABLED:true}
+  model: ${WEB_SEARCH_MODEL:${GEMINI_MODEL:gemini-3.5-flash}}
+
+jwt:
+  issuer: ${JWT_ISSUER:fitness-ai-user-service}
+  jwk-set-uri: http://${USER_SERVICE_HOST:localhost}:${USER_SERVICE_PORT:8081}/.well-known/jwks.json
+
+services:
+  knowledge-service:
+    base-url: http://${KNOWLEDGE_SERVICE_HOST:localhost}:${KNOWLEDGE_SERVICE_PORT:8084}
+  profile-service:
+    base-url: http://${PROFILE_SERVICE_HOST:localhost}:${PROFILE_SERVICE_PORT:8082}
+  file-service:
+    base-url: http://${FILE_SERVICE_HOST:localhost}:${FILE_SERVICE_PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
